@@ -12,9 +12,10 @@ SHA for compare-and-swap, refuses a conflict, and never stores a token in state.
 The workflow's built-in token is read-only for source checkout and is not used for
 state; `SCOUT_STATE_TOKEN` is independently scoped to the private state repository.
 
-The workflow uses a three-hour cycle at minute 37 UTC and triggers the 9 AM IST
+The workflow uses a three-hour scan cycle at minute 37 UTC and triggers the 9 AM IST
 digest from the cycle that lands around 09:07 IST. It also supports manual scan,
-digest, verify, health and maintenance modes. `concurrency` prevents two jobs from
+digest, verify, health and maintenance modes. Weekly health is queued by explicit
+`maintain`; it is not a separate scheduled job. `concurrency` prevents two jobs from
 writing the same checkpoint. Five-minute job timeout and application budgets stop
 partial work cleanly. A partial scan leaves unprocessed sources due for a later run.
 
@@ -30,9 +31,10 @@ uv run python -m scout.cli --no-email scan --dry-run --no-discovery
 
 For Docker, `docker build -t scout:local .`; run the offline checks with
 `docker run --rm --network none scout:local /opt/scout/.venv/bin/python scripts/test.py`
-and `scripts/demo.py`. Use a named volume for `/opt/scout/data` and inject secrets at
-runtime. The Dockerfile is not an always-on scheduler, and the build has not been
-verified on this Windows host because Docker is unavailable.
+and `docker run --rm --network none scout:local /opt/scout/.venv/bin/python scripts/demo.py`.
+Use a named volume for `/opt/scout/data` and inject secrets at runtime. The Dockerfile
+is not an always-on scheduler, and the build has not been verified on this Windows
+host because Docker is unavailable.
 
 ## GitHub setup
 

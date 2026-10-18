@@ -47,9 +47,9 @@ Research date: **2026-10-19 Asia/Kolkata**. Research and architecture evidence:
   idempotency keys, stable Message-ID, plain-text alternatives, dry-run and test email.
 * GitHub Actions schedule, manual dispatch, concurrency protection, five-minute job
   timeout, locked dependencies, automatic private-state checkpointing and weekly
-  health capability. The schedule is eight cycles/day at minute 37 of every third
-  hour; the 09:07 IST cycle also queues the daily digest. Schedules are best-effort:
-  GitHub can delay/drop them.
+  health capability through explicit `maintain`. The default schedule is eight
+  scan cycles/day at minute 37 of every third hour; the 09:07 IST cycle also queues
+  the daily digest. Schedules are best-effort: GitHub can delay/drop them.
 
 ## Project layout
 
@@ -269,9 +269,9 @@ waits at least 30 minutes before retrying.
    real `digest`/`scan` only after reviewing SMTP configuration. The first scheduled
    digest is around 9 AM IST (03:37 UTC), subject to scheduler delay.
 6. Keep repository activity or manually re-enable the workflow if GitHub disables a
-   public schedule after inactivity. The selected design is private, but scheduling
-   is still not an exact-time guarantee. Check Actions run history and the weekly
-   health email.
+   public schedule after inactivity. Scheduling is not an exact-time guarantee. Run
+   the manual `maintain` mode when you want the weekly health notification; check
+   Actions history and the outbox health report.
 
 GitHub Free currently documents 2,000 private-repository hosted-runner minutes/month
 and 500 MB artifact storage. The default schedule is 240 scheduled runs in a 30-day
