@@ -1,6 +1,6 @@
 # Scout overnight engineering review
 
-Last updated: **2026-10-19 03:05 Asia/Kolkata**
+Last updated: **2026-10-19 03:28 Asia/Kolkata**
 
 This is an active engineering record. Claims below are based on the workspace,
 local commands, the current OmniRush session, and bounded synthetic/live checks;
@@ -43,3 +43,6 @@ the owner verifies those facts and asks the organizer about any uncertainty.
   release documentation and action/cadence hygiene. A bounded live smoke reproduced
   5 successful, 1 failed and 4 unreached sources; its scan returned partial coverage
   rather than silently reporting a complete cycle.
+- **03:28 IST:** final offline gates and secret/path scans were rerun; the complete
+  morning handoff is in `docs/overnight-report.md`. External publication, Docker,
+  GitHub Actions, SMTP and dashboard verification remain blocked by missing access.
