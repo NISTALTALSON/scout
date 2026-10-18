@@ -1,0 +1,33 @@
+timezone: Asia/Kolkata
+country: India
+region: Kerala
+student: true
+categories:
+  ai_tools: 1.0
+  cybersecurity: 1.0
+  hackathons: 1.0
+  student_benefits: 1.0
+  startups: 1.0
+  career: 1.0
+  learning: 0.7
+  additional: 0.5
+keywords: [Kerala, Kochi, India, online, remote, student, free, credits, open source, founder, agent]
+min_digest_score: 50
+min_urgent_score: 65
+min_urgent_confidence: 75
+alert_windows_hours: [24, 6, 1]
+max_digest_items: 12
+allow_paid: false
+auto_enable_trusted_sources: true
+limits:
+  max_seconds: 90
+  max_requests: 80
+  max_candidates: 120
+  max_new_sources: 3
+  max_ai_calls: 0
+  max_ai_tokens: 0
+  max_response_bytes: 2097152
+  max_emails_per_run: 5
+  max_emails_per_day: 10
+  max_opportunities: 1000
+  retention_days: 180

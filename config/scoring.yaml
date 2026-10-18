@@ -1,0 +1,9 @@
+weights:
+  relevance: 25
+  benefit: 10
+  cost: 15
+  eligibility: 10
+  evidence: 15
+  urgency: 10
+  freshness: 5
+  reliability: 10
