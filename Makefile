@@ -1,12 +1,15 @@
-.PHONY: test lint check config
+.PHONY: test lint check config demo
 
 test:
-	python scripts/test.py
+	uv run python scripts/test.py
 
 lint:
-	python -m ruff check scout tests scripts
+	uv run ruff check scout tests scripts
 
 config:
-	python -c "from scout.config import Configuration; print('validated', len(Configuration().sources), 'source records')"
+	uv run python -c "from scout.config import Configuration; print('validated', len(Configuration().sources), 'source records')"
+
+demo:
+	uv run python scripts/demo.py
 
 check: config lint test

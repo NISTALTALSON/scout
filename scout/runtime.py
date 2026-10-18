@@ -24,13 +24,25 @@ class Runtime:
         self.configuration = Configuration(self.config_dir)
         self.cloud_state = cloud_state
         self.backend = None
-        repository = os.getenv("GITHUB_REPOSITORY")
-        token = os.getenv("GITHUB_TOKEN")
         if cloud_state:
-            if not repository or not token:
-                raise StateError("cloud state requires GITHUB_REPOSITORY and GITHUB_TOKEN")
+            state_values = {
+                name: os.getenv(name)
+                for name in ("SCOUT_STATE_REPOSITORY", "SCOUT_STATE_TOKEN", "SCOUT_STATE_BRANCH")
+            }
+            missing = [name for name, value in state_values.items()
+                       if not isinstance(value, str) or not value.strip()]
+            if missing:
+                raise StateError(
+                    "cloud state requires SCOUT_STATE_REPOSITORY, SCOUT_STATE_TOKEN, and "
+                    "SCOUT_STATE_BRANCH"
+                )
+            public_repository = os.getenv("GITHUB_REPOSITORY")
+            state_repository = state_values["SCOUT_STATE_REPOSITORY"]
+            if public_repository and state_repository.casefold() == public_repository.casefold():
+                raise StateError("cloud state repository must differ from GITHUB_REPOSITORY")
             self.backend = GitHubStateBackend(
-                repository, token, os.getenv("SCOUT_STATE_BRANCH", "scout-state"))
+                state_repository, state_values["SCOUT_STATE_TOKEN"], state_values["SCOUT_STATE_BRANCH"]
+            )
         self.store = Store(self.state_dir / "scout.sqlite3", create=True)
         if self.backend:
             state = self.backend.load(bootstrap=bootstrap)

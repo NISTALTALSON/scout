@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DEMO DATA ONLY: synthetic offline fixture; never a production source. -->
+<rss version="2.0">
+  <channel>
+    <title>DEMO DATA — Synthetic Publisher Feed</title>
+    <link>https://demo.publisher.test/feed.xml</link>
+    <item>
+      <title>Kochi Civic Hackathon 2026</title>
+      <link>https://demo.publisher.test/hackathon</link>
+      <guid>https://demo.publisher.test/hackathon</guid>
+      <description>Register now for a hackathon. Registration is free. Available worldwide. Registration closes on 20 October 2026 at 5:00 pm IST.</description>
+    </item>
+    <item>
+      <title>Kerala Cyber Defense CTF 2026</title>
+      <link>https://demo.publisher.test/ctf</link>
+      <guid>https://demo.publisher.test/ctf</guid>
+      <description>Join this capture the flag competition. Free access. Available worldwide. Registration closes on 19 October 2026 at 5:30 pm UTC.</description>
+    </item>
+    <item>
+      <title>Student Startup Grant 2026</title>
+      <link>https://demo.publisher.test/grant</link>
+      <guid>https://demo.publisher.test/grant</guid>
+      <description>Apply now for a startup grant. Free with verified student status. Available to Indian students. Student verification required. Application closes on 22 October 2026 at 5:00 pm IST.</description>
+    </item>
+    <item>
+      <title>Open Source Learning Course</title>
+      <link>https://demo.publisher.test/learning</link>
+      <guid>https://demo.publisher.test/learning</guid>
+      <description>Register for an open source learning course. Pricing and eligibility details are not published.</description>
+    </item>
+  </channel>
+</rss>

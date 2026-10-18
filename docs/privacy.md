@@ -7,9 +7,10 @@ mailbox, collect social credentials, store complete correspondence, or publish
 preferences/feedback/scores.
 
 Local `data/` contains SQLite state and exports. It is ignored by Git and should be
-protected by the operating-system account. The optional `scout-state` branch is
-private and contains compressed JSON state for recovery; Git history is also private
-state. Do not enable Pages, public artifacts or public repository state for it.
+protected by the operating-system account. The optional `scout-state` branch in the
+separate private state repository contains compressed JSON state for recovery; Git
+history is also private state. Do not enable Pages, public artifacts or public
+repository state for it.
 
 Default retention is 180 days for old opportunities subject to the outbox and 1,000
 recent run records. Tombstones and notification idempotency keys are retained to

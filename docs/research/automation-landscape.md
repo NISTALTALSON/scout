@@ -7,11 +7,12 @@ not a promise that no verification will be requested. No service account was cre
 
 ## Decision summary
 
-Use a **private GitHub repository, standard Ubuntu Actions runner, bounded Python
-cycles, SQLite locally, private versioned JSON checkpoints on a separate state
-branch, and the owner's existing SMTP account**. No paid search or model is needed.
-Default schedule: eight cycles/day (every three hours); ordinary sources are due
-every six hours or slower. One additional daily digest at 03:37 UTC (09:07 IST).
+Use a **public GitHub source/workflow repository, standard Ubuntu Actions runner,
+bounded Python cycles, SQLite locally, private versioned JSON checkpoints on a
+separate state repository/branch, and the owner's existing SMTP account**. No paid
+search or model is needed. Default schedule: eight cycles/day (every three hours);
+ordinary sources are due every six hours or slower. The cycle at 03:37 UTC (09:07 IST)
+also queues the daily digest; it is not a ninth workflow run.
 Urgent monitoring is best-effort, not a one-hour SLA. See the ADR for the privacy
 and durable-before-send rules.
 
@@ -39,10 +40,11 @@ because it supports agents/tool calls.
 
 ### Setup, security, lock-in, and failure comparison
 
-* Actions: moderate Windows setup (Python/uv/Git), no local daemon; private repository
-  ACL and managed secrets. Portable Python/SQLite/export format; small GitHub-specific
-  persistence adapter. Risks: shared account minutes exhausted, deleted state branch,
-  token permission change, SMTP anti-abuse, delayed schedules, dependency download.
+* Actions: moderate Windows setup (Python/uv/Git), no local daemon; public source with
+  a separately ACL'd private state repository and managed secrets. Portable
+  Python/SQLite/export format; small GitHub-specific persistence adapter. Risks:
+  shared account minutes exhausted, deleted state branch, token permission change,
+  SMTP anti-abuse, delayed schedules, dependency download.
 * Apps Script: easiest browser setup and built-in MailApp; [installable triggers](https://developers.google.com/apps-script/guides/triggers/installable)
   run as creator and may be time-randomized. Script/Drive ACLs, OAuth scope, script
   properties. Higher JS/Google lock-in; six-minute cap and small properties store

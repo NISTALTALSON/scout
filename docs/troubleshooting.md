@@ -3,7 +3,7 @@
 ## `state database is missing` / corrupt state
 
 Do not delete `data/scout.sqlite3` or bootstrap unless this is the first deployment.
-Run `health`, inspect the private `scout-state` branch and restore the last validated
+Run `health`, inspect the private state repository's `scout-state` branch and restore the last validated
 export/backup:
 
 ```bash
@@ -41,7 +41,7 @@ to make the email non-empty.
 
 ## GitHub Actions failed or was late
 
-Inspect the run log and private state branch. Scheduled jobs use the default branch,
+Inspect the run log and the separate private state repository/branch. Scheduled jobs use the default branch,
 can be delayed/dropped under load and do not run on the exact minute. Check the
 repository's included Actions minutes; never add a paid runner automatically. A
 checkpoint conflict means another job wrote state—wait for it and rerun, never force

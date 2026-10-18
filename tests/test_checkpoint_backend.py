@@ -2,10 +2,12 @@ import base64
 import copy
 import gzip
 import json
+from pathlib import Path
 
 import httpx
 import pytest
 
+from scout.runtime import Runtime
 from scout.storage.persistence_backend import GitHubStateBackend, atomic_write_export
 from scout.storage.sqlite_store import StateConflict, StateError, Store, state_checksum
 
@@ -74,6 +76,57 @@ def backend(fake):
     client = httpx.Client(transport=httpx.MockTransport(fake), trust_env=False,
                           follow_redirects=False)
     return GitHubStateBackend("owner/private", "opaque-token", client=client)
+
+
+@pytest.mark.parametrize("missing", ["SCOUT_STATE_REPOSITORY", "SCOUT_STATE_TOKEN", "SCOUT_STATE_BRANCH"])
+def test_runtime_requires_independent_cloud_state_configuration(tmp_path, monkeypatch, missing):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/public-source")
+    monkeypatch.setenv("GITHUB_TOKEN", "public-workflow-token")
+    monkeypatch.setenv("SCOUT_STATE_REPOSITORY", "owner/private-state")
+    monkeypatch.setenv("SCOUT_STATE_TOKEN", "private-state-token")
+    monkeypatch.setenv("SCOUT_STATE_BRANCH", "scout-state")
+    monkeypatch.delenv(missing)
+
+    with pytest.raises(StateError, match=missing):
+        Runtime(tmp_path / "data", Path("config"), cloud_state=True)
+
+
+def test_runtime_rejects_public_workflow_repository_as_state_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "Owner/Public-Source")
+    monkeypatch.setenv("SCOUT_STATE_REPOSITORY", "owner/public-source")
+    monkeypatch.setenv("SCOUT_STATE_TOKEN", "private-state-token")
+    monkeypatch.setenv("SCOUT_STATE_BRANCH", "scout-state")
+
+    with pytest.raises(StateError, match="differ from GITHUB_REPOSITORY"):
+        Runtime(tmp_path / "data", Path("config"), cloud_state=True)
+
+
+def test_runtime_uses_explicit_private_state_backend(tmp_path, monkeypatch, snapshot):
+    fake = FakeGitHub(snapshot)
+    client = httpx.Client(transport=httpx.MockTransport(fake), trust_env=False,
+                          follow_redirects=False)
+
+    class MockedBackend(GitHubStateBackend):
+        def __init__(self, repository, token, branch):
+            assert repository == "owner/private"
+            assert token == "opaque-token"
+            assert branch == "scout-state"
+            super().__init__(repository, token, branch, client=client)
+
+    monkeypatch.setattr("scout.runtime.GitHubStateBackend", MockedBackend)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/public-source")
+    monkeypatch.setenv("GITHUB_TOKEN", "public-workflow-token")
+    monkeypatch.setenv("SCOUT_STATE_REPOSITORY", "owner/private")
+    monkeypatch.setenv("SCOUT_STATE_TOKEN", "opaque-token")
+    monkeypatch.setenv("SCOUT_STATE_BRANCH", "scout-state")
+
+    runtime = Runtime(tmp_path / "data", Path("config"), cloud_state=True, bootstrap=True)
+    try:
+        runtime.checkpoint()
+        assert runtime.backend.repository == "owner/private"
+        assert fake.branch
+    finally:
+        runtime.close()
 
 
 def test_bootstrap_roundtrip_and_compare_and_swap(snapshot):

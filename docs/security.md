@@ -33,7 +33,12 @@ claim that every kernel resolver call is interruptible.
 Credentials only enter via process environment / Actions secrets. Logs never print
 SMTP passwords, GitHub tokens, response bodies or checkpoint content. Private state
 is excluded from Git, Docker build context where possible, artifacts, caches and
-Pages. The state branch must stay private. `portalocker` excludes simultaneous local
+Pages. Cloud mode requires `SCOUT_STATE_REPOSITORY`, `SCOUT_STATE_TOKEN`, and
+`SCOUT_STATE_BRANCH` independently; it never falls back to the public workflow's
+`GITHUB_REPOSITORY` or `GITHUB_TOKEN`, and rejects a state repository equal to
+`GITHUB_REPOSITORY`. The state repository and branch must stay private. The workflow
+has read-only source contents permission; only the independently scoped state token
+can write the checkpoint destination. `portalocker` excludes simultaneous local
 writers; the GitHub backend uses blob-SHA CAS for remote writers.
 
 Outbox state is durable before SMTP. A crash after remote acceptance can duplicate

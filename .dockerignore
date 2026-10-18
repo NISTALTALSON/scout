@@ -5,6 +5,12 @@
 .python-bin
 data
 private
+data-live
 *.sqlite*
-tests
+*.db
+*.eml
+*.log
+.env
+.env.*
+!.env.example
 .omnirush

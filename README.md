@@ -38,15 +38,18 @@ Research date: **2026-10-19 Asia/Kolkata**. Research and architecture evidence:
   relevance scoring and urgent windows (24/6/1 hours).
 * SQLite with process locking, schema migration, checksums, atomic backup/restore,
   corruption refusal, retention/tombstones and a durable notification outbox.
-* Private GitHub Contents API checkpoint adapter with a `scout-state` branch,
-  compressed validated JSON, optimistic blob-SHA compare-and-swap and no artifact/
-  cache persistence. It refuses public repositories and missing state unless
+* Private GitHub Contents API checkpoint adapter with a `scout-state` branch in a
+  separate private state repository, compressed validated JSON, optimistic blob-SHA
+  compare-and-swap and no artifact/cache persistence. It refuses public repositories,
+  a state repository equal to the workflow repository, and missing state unless
   bootstrap is explicit.
 * TLS-only SMTP sender with safe headers, bounded retry/uncertain-accept handling,
   idempotency keys, stable Message-ID, plain-text alternatives, dry-run and test email.
 * GitHub Actions schedule, manual dispatch, concurrency protection, five-minute job
   timeout, locked dependencies, automatic private-state checkpointing and weekly
-  health capability. Schedules are best-effort: GitHub can delay/drop them.
+  health capability. The schedule is eight cycles/day at minute 37 of every third
+  hour; the 09:07 IST cycle also queues the daily digest. Schedules are best-effort:
+  GitHub can delay/drop them.
 
 ## Project layout
 
@@ -64,7 +67,47 @@ config/                taxonomy, preferences, scoring and source registry
 docs/                  research, security, privacy, deployment and operations
 tests/                 offline unit/integration/security tests
 .github/workflows/     unattended schedule and manual run
+demo/fixtures/         clearly labeled synthetic offline demonstration data
 ```
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+  A[Public feeds/pages/APIs] --> B[Bounded secure collectors]
+  B --> C[Normalize + deduplicate]
+  C --> D[First-party verification]
+  D --> E[Score + deadline policy]
+  E --> F[(SQLite state)]
+  F --> G[Durable outbox]
+  G --> H[TLS SMTP, explicit send]
+  F --> I[CAS checkpoint]
+  I --> J[(Separate private state repo)]
+```
+
+The source/workflow repository can be public. Real history, feedback, notification
+records and checkpoints must stay in the separately configured private state
+repository. See [`docs/buildathon-submission.md`](docs/buildathon-submission.md) for
+the release checklist and recording plan.
+
+## Feature and evidence status
+
+| Capability | Status | Evidence boundary |
+|---|---|---|
+| Secure RSS/Atom, HTML, API, calendar and GitHub-compatible collection | Tested locally | Parser/security fixtures; live source coverage is bounded and partial. |
+| First-party claim verification, conservative pricing/eligibility | Tested locally; bounded live smoke | Evidence is claim-specific; unknown remains unknown. |
+| Deduplication, material updates, deadline windows and feedback | Tested locally | Offline lifecycle and functional tests. |
+| SQLite state, corruption refusal, backup/import and outbox retries | Tested locally | Storage/checkpoint/outbox tests. |
+| Separate private GitHub checkpoint repository | Tested against mocks | Requires a private repository and narrowly scoped token. |
+| GitHub Actions schedule | Workflow syntax reviewed | Requires a public source repo, private state repo and Actions secrets; scheduled execution not live verified. |
+| Real SMTP delivery | Mocked only | Requires owner-configured provider credentials and a deliberate test; receipt not verified. |
+| Offline demo | Tested locally | Synthetic `DEMO DATA` fixtures; no real email or production state. |
+| Docker rebuild | Not verified on this host | Docker is unavailable locally; exact judge commands are documented. |
+
+## License
+
+Scout is released under the MIT License; see [`LICENSE`](LICENSE). Confirm the
+copyright-holder wording before publishing a public repository.
 
 ## Local setup
 
@@ -84,6 +127,46 @@ On Windows PowerShell, the equivalent direct interpreter is:
 ```powershell
 .venv\Scripts\python.exe -m scout.cli --no-email scan --dry-run --no-discovery
 ```
+
+## Offline demonstration (2-3 minutes)
+
+The reproducible demo uses only the synthetic, clearly labeled fixtures in
+[`demo/fixtures`](demo/fixtures). It creates a temporary SQLite database, never
+opens the default `data/` state, never creates an SMTP sender, and removes its
+temporary state when it exits.
+
+From the project root:
+
+```bash
+uv sync --frozen
+uv run python scripts/demo.py
+# equivalent Make target:
+make demo
+```
+
+In PowerShell, use the same `uv run` command (or `make demo` in a Unix-like shell).
+The two-to-three-minute walkthrough is visible in the command output:
+
+1. **Collect -> Normalize -> Verify -> Score -> Store -> Alert** loads four
+   official synthetic publisher/page fixtures across hackathons, cybersecurity,
+   startups and learning, plus one clearly labeled low-quality community claim.
+2. The initial report shows evidence counts, ranking, verified-free pricing,
+   conditional pricing/eligibility, and unknown pricing/eligibility. It also prints
+   the exact 24-, 6- and 1-hour deadline-window decisions and a simulated email
+   preview with `SMTP calls: 0`.
+3. The repeat phase collects the same fixtures again and reports zero new records,
+   zero updates, and no duplicate notifications.
+4. The final phase switches only the learning page to `learning-v2.html`, reports a
+   material update/version bump, and previews the resulting update notification.
+
+The demo is intentionally separate from production scans. To inspect or change the
+synthetic scenario, edit the files under `demo/fixtures` and rerun the command.
+
+Cloud mode requires all three independent state settings in the process environment:
+`SCOUT_STATE_REPOSITORY`, `SCOUT_STATE_TOKEN` and `SCOUT_STATE_BRANCH`. The state
+repository must be private and must differ from `GITHUB_REPOSITORY` when that public
+workflow identity is present. Cloud mode never falls back to `GITHUB_REPOSITORY` or
+`GITHUB_TOKEN`; use [`.env.example`](.env.example) for the local variable names.
 
 The visible `data/` directory is local private state and is ignored by Git. If
 existing state is missing or corrupt, Scout fails instead of treating the entire web
@@ -163,15 +246,19 @@ waits at least 30 minutes before retrying.
 
 ## Unattended GitHub Actions deployment
 
-1. Create a **private** GitHub repository and push this project to its default branch.
-2. Enable Actions. The workflow requires `contents: write` so it can write only the
-   private `scout-state` checkpoint branch using the automatically scoped
-   `GITHUB_TOKEN`; no PAT is required for the default repository.
-3. Add repository Actions secrets under **Settings → Secrets and variables →
-   Actions**: `EMAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`,
-   `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM`, and `EMAIL_TO`. Do not add
-   `GITHUB_TOKEN`; GitHub provides it. Set `EMAIL_ENABLED=false` first if you want
-   a state-only rollout.
+1. Push this project to a public source/workflow repository and create a separate
+   **private** state repository with a default branch. The state repository is where
+   the checkpoint branch and its history live; never use the public repository for it.
+2. Enable Actions. The workflow has `contents: read` only, so its built-in workflow
+   token can check out the source but cannot write source or state data.
+3. Create a fine-grained token (or an equivalent GitHub App token) scoped only to the
+   private state repository with Contents read/write access. Add these repository
+   Actions secrets under **Settings → Secrets and variables → Actions**:
+   `SCOUT_STATE_REPOSITORY`, `SCOUT_STATE_TOKEN`, `SCOUT_STATE_BRANCH`,
+   `EMAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USERNAME`,
+   `SMTP_PASSWORD`, `EMAIL_FROM`, and `EMAIL_TO`. Set `SCOUT_STATE_BRANCH` to
+   `scout-state`. Do not use or add `GITHUB_TOKEN` as the state credential. Set
+   `EMAIL_ENABLED=false` first if you want a state-only rollout.
 4. For the first deployment only, run **Actions → Scout opportunity intelligence →
    Run workflow** with `scan`, `dry_run=true` and `bootstrap_state=true`. This
    explicitly creates the private state branch and baselines without SMTP. Leave
@@ -187,8 +274,9 @@ waits at least 30 minutes before retrying.
    health email.
 
 GitHub Free currently documents 2,000 private-repository hosted-runner minutes/month
-and 500 MB artifact storage. The default schedule is roughly 270 runs/month, with a
-five-minute upper job timeout; actual dependency/install/network time counts. Keep
+and 500 MB artifact storage. The default schedule is 240 scheduled runs in a 30-day
+month (248 in a 31-day month), with a five-minute upper job timeout; actual
+dependency/install/network time counts. Keep
 the repository's Actions budget at zero/blocked if no paid overage is authorized.
 Never add larger runners, a payment method or automatic paid fallback. See the ADR
 for why Cloudflare, Apps Script, n8n, Activepieces, Huginn, Pipedream and free
@@ -196,17 +284,29 @@ hosting alternatives were not selected.
 
 ## Docker
 
-The Dockerfile installs the pinned runtime/dependencies and runs a dry, no-email
-scan by default. Durable state is mounted separately:
+The Dockerfile installs the pinned runtime and locked dependencies, includes the
+offline tests/demo, and runs a dry, no-email scan by default. Docker is optional for
+local development, but this is the judge-style rebuild path:
 
 ```bash
 docker build -t scout:local .
-docker run --rm -v "${PWD}/data:/opt/scout/data" scout:local
+docker run --rm --network none scout:local /opt/scout/.venv/bin/python scripts/test.py
+docker run --rm --network none scout:local /opt/scout/.venv/bin/python scripts/demo.py
+```
+
+For durable local state, prefer a named volume so the image's non-root `scout` user
+can write safely:
+
+```bash
+docker volume create scout-data
+docker run --rm -v scout-data:/opt/scout/data scout:local
 ```
 
 For real email, pass environment values through a platform secret mechanism, for
-example `--env-file .env`; do not bake `.env` into the image. Docker local execution
-is reproducible, but it is not a free unattended host by itself.
+example `--env-file .env`; `.env` is excluded from the Docker build context and must
+never be baked into the image. Docker local execution is reproducible, but it is not
+a free unattended host by itself. A Docker build has not been run in this workspace
+because Docker is unavailable here; the commands above are the exact intended checks.
 
 ## Tests and quality gates
 
@@ -239,7 +339,7 @@ Read [`docs/security.md`](docs/security.md), [`docs/privacy.md`](docs/privacy.md
 [`docs/deployment.md`](docs/deployment.md), and [`docs/troubleshooting.md`](docs/troubleshooting.md).
 External pages are untrusted data and can contain prompt injection; Scout does not
 give them tools. Private preferences, feedback, claim scores, state and email
-addresses stay in local ignored state or the private checkpoint branch. No dashboard
+addresses stay in local ignored state or the separate private state-repository branch. No dashboard
 or public artifact is shipped. Restore from a validated export/backup only after
 reviewing its source and use `--replace` explicitly.
 
@@ -247,17 +347,19 @@ reviewing its source and use `--replace` explicitly.
 
 * No external deployment has been executed from this workspace: GitHub CLI is not
   installed and no repository/SMTP authorization was provided. The exact remaining
-  action is to create a private repository, push the committed project, add SMTP
-  secrets, enable Actions, and run the dry dispatch described above.
+  action is to create the public source repository and separate private state
+  repository, configure the state/email secrets, enable Actions, and run the dry
+  dispatch described above.
 * Scheduled Actions may be delayed or dropped; urgent windows are best effort, not
   a one-hour SLA. Short promotions between scans can be missed.
 * External SMTP acceptance is not proven by unit tests and exactly-once mail is
   impossible to promise. Sender verification/deliverability are provider concerns.
 * JavaScript/login/CAPTCHA/private pages and universal search remain outside default
   coverage. A quarantined URL is not an opportunity or official evidence.
-* Cloud checkpoint uses GitHub Contents API and private branch history; if a project
-  policy forbids branch state, migrate the validated export to a persistent hosted
-  worker. Do not publish the state branch or move it to Pages/artifacts.
+* Cloud checkpoint uses GitHub Contents API and private branch history in the separate
+  state repository; if a project policy forbids branch state, migrate the validated
+  export to a persistent hosted worker. Do not publish the state repository/branch or
+  move it to Pages/artifacts.
 * Zero cost is a default design, not a provider guarantee. GitHub, SMTP, source API,
   feed terms, quotas and pricing can change; the operational report surfaces partial
   coverage rather than switching to paid services.

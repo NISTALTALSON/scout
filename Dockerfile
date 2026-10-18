@@ -9,13 +9,16 @@ WORKDIR /opt/scout
 RUN python -m pip install --no-cache-dir uv==0.11.28
 
 COPY pyproject.toml uv.lock .python-version ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-install-project
 
 COPY scout ./scout
 COPY config ./config
 COPY docs ./docs
-COPY README.md .env.example ./
-RUN uv sync --frozen --no-dev && useradd --create-home --uid 10001 scout \
+COPY scripts ./scripts
+COPY tests ./tests
+COPY demo ./demo
+COPY README.md LICENSE .env.example ./
+RUN uv sync --frozen && useradd --create-home --uid 10001 scout \
     && mkdir -p /opt/scout/data && chown -R scout:scout /opt/scout
 
 USER scout

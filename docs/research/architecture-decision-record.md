@@ -8,16 +8,18 @@ Evidence and current limits: [automation landscape](automation-landscape.md).
 The owner needs unattended personal intelligence, not a public scraping service.
 An ordinary Windows laptop cannot be production infrastructure. A deterministic
 Python pipeline is easier to test, restore and move than visual flows or an
-unconstrained model loop. We select a **private GitHub repository** using standard
-Ubuntu hosted runners and existing personal SMTP (Gmail app-password route when
-the account permits it). No domain purchase, search key, AI key, server, database
-subscription or student verification is required for the default application.
+unconstrained model loop. We select a **public source/workflow repository plus a
+separate private state repository** using standard Ubuntu hosted runners and
+existing personal SMTP (Gmail app-password route when the account permits it). No
+domain purchase, search key, AI key, server, database subscription or student
+verification is required for the default application.
 
 SQLite provides transactional local memory; a versioned, checksummed JSON export is
-the durable cloud checkpoint on a **scout-state branch of the same private repo**.
-The Contents API supplies optimistic concurrency using the previous blob SHA.
-All state-bearing jobs share one concurrency group; a local process lock excludes
-overlapping CLI runs. Public repos are refused by the persistence adapter. No
+the durable cloud checkpoint on a **scout-state branch of a separate private state
+repo**. The source/workflow repo may be public. The Contents API supplies optimistic
+concurrency using the previous blob SHA. All state-bearing jobs share one concurrency
+group; a local process lock excludes overlapping CLI runs. Public repos and a state
+repo equal to the workflow repo are refused by the runtime/backend boundary. No
 private exports in Actions artifacts, caches, logs or Pages. Git history is backup,
 not an excuse to publish private state. No credentials enter the export.
 
@@ -31,7 +33,7 @@ existing discoveries without mailing them.
 
 ## Cost budget
 
-Nine jobs/day = 270 in 30 days (279 in 31). At an enforced five-minute job timeout
+Eight scheduled jobs/day = 240 in 30 days (248 in 31). At an enforced five-minute job timeout
 that is at most 1,350/1,395 runner minutes, leaving part of Free's 2,000 for CI and
 other uses; setup/download delays count too. This is a capacity estimate, not a
 reservation: all private repos on the account share minutes. Configure a GitHub
@@ -67,9 +69,9 @@ not a free reliability promise. No artificial keep-alive traffic or fake commits
   Reconsider only if an existing server is available; Docker supports portability.
 * Render free sleep/ephemeral disk/SMTP restrictions and expiring DB disqualify it.
 * Pipedream's announced legacy workflow shutdown disqualifies a new dependency.
-* GitHub public code + encrypted external state is possible, but adds key management,
-  accidental publication risks and public schedule inactivity behavior. Private-first
-  is a simpler privacy default, within the estimated runner allowance.
+* A public source repository plus a separate private state repository is selected for
+  the buildathon and safe source publication. It adds a narrowly scoped state token
+  and repository setup, but avoids exposing checkpoint history on a public branch.
 * No vector database, browser, broker, always-on scheduler service, LLM framework or
   autonomous code deployment: no measured need justifies their cost/attack surface.
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DEMO DATA ONLY: synthetic low-quality community claim; never official evidence. -->
+<rss version="2.0">
+  <channel>
+    <title>DEMO DATA — Community Claims</title>
+    <link>https://demo.community.test/feed.xml</link>
+    <item>
+      <title>Community AI Tool Free Forever Claim</title>
+      <link>https://demo.community.test/community-claim</link>
+      <guid>https://demo.community.test/community-claim</guid>
+      <description>A community post claims an AI tool is free forever, but no official pricing or India eligibility is published.</description>
+    </item>
+  </channel>
+</rss>

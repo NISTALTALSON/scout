@@ -326,8 +326,14 @@ class Scout:
         changes = self.store.get_meta("source_changes", [])
         if changes:
             health["Registry changes"] = "; ".join(changes[-5:])
-        if report["missed_run_warning"]:
-            health["Warning"] = "An expected scan may have been missed; this is a next-run detection."
+        if report["partial_scan_warning"]:
+            coverage = report["coverage"]
+            health["Warning"] = (
+                f"Most recent scan was partial ({coverage['completed']}/{coverage['planned']} "
+                "planned sources completed); unprocessed sources remain due."
+            )
+        elif report["missed_run_warning"]:
+            health["Warning"] = "An expected complete scan may have been missed; this is a next-run detection."
         note = make_notification("digest", items[:self.preferences.max_digest_items], self.now,
                                  f"digest:{day}", self.preferences.timezone, health)
         if self.store.enqueue(note):
