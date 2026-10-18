@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>{{ heading }}</title></head><body>
+<h1>{{ heading }}</h1><p>Generated: {{ generated_at }}</p>
+{% for item in items %}
+<section><h2>{{ loop.index }}. {{ item.title }}</h2>
+<p>Source: {{ item.source }}</p>
+<p>Deadline ({{ item.deadline_type }}, {{ item.deadline_verified }}): {{ item.deadline }}</p>
+<p>Last checked: {{ item.last_checked }}; verification: {{ item.verification }}</p>
+<p>Pricing: {{ item.pricing }}; eligibility: {{ item.eligibility }}</p>
+<p>Why it matters: {{ item.reason }}</p><p>Next action: {{ item.next_action }}</p>
+{% if item.canonical %}<p><a href="{{ item.canonical }}">Verified announcement</a></p>{% endif %}
+{% if item.registration %}<p><a href="{{ item.registration }}">Verified registration</a></p>{% endif %}
+</section>
+{% endfor %}
+{% if changes %}<h2>Source changes</h2><ul>{% for change in changes %}<li>{{ change }}</li>{% endfor %}</ul>{% endif %}
+{% if not items and not changes %}<p>No opportunities or source changes to report.</p>{% endif %}
+</body></html>

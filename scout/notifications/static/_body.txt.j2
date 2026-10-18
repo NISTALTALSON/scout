@@ -1,0 +1,20 @@
+{{ heading }}
+Generated: {{ generated_at }}
+{% for item in items %}
+{{ loop.index }}. {{ item.title }}
+Source: {{ item.source }}
+Deadline ({{ item.deadline_type }}, {{ item.deadline_verified }}): {{ item.deadline }}
+Last checked: {{ item.last_checked }}
+Verification: {{ item.verification }}
+Pricing: {{ item.pricing }}
+Eligibility: {{ item.eligibility }}
+Why it matters: {{ item.reason }}
+Next action: {{ item.next_action }}
+{% if item.canonical %}Verified announcement: {{ item.canonical }}
+{% endif %}{% if item.registration %}Verified registration: {{ item.registration }}
+{% endif %}{% endfor %}
+{% if changes %}Source changes:
+{% for change in changes %}- {{ change }}
+{% endfor %}{% endif %}
+{% if not items and not changes %}No opportunities or source changes to report.
+{% endif %}
