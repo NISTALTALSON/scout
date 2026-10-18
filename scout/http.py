@@ -85,11 +85,13 @@ class SafeHttpClient:
         self.budget = budget
         self.max_response_bytes = max_response_bytes
         self._client = httpx.Client(transport=transport or _PinnedTransport(resolver or _resolve),
-                                    trust_env=False, follow_redirects=False)
+                                    trust_env=False, follow_redirects=False,
+                                    headers={"User-Agent": "ScoutOpportunityAgent/0.1 (personal monitoring)"})
         self._robots: dict[str, RobotFileParser | bool] = {}
         self._robots_errors: dict[str, FetchError] = {}
         self._last_request: dict[str, float] = {}
         self._lock = threading.Lock()
+        self._cache: dict[tuple, FetchResult] = {}
 
     def close(self):
         self._client.close()
@@ -115,6 +117,13 @@ class SafeHttpClient:
                                          _retry_after(response.headers.get("retry-after")))
                     if response.status_code >= 500:
                         raise FetchError("HTTP server unavailable", response.status_code, 3600)
+                    media = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+                    if response.status_code == 200 and media and not (
+                        media.startswith("text/") or media.endswith(("+xml", "+json"))
+                        or media in {"application/xml", "application/json", "application/rss+xml",
+                                     "application/atom+xml", "application/ics"}
+                    ):
+                        raise FetchError("unsupported response content type")
                     coding = response.headers.get("content-encoding", "identity").lower().strip()
                     if coding not in {"identity", "", "gzip", "deflate"}:
                         raise FetchError("unsupported response encoding")
@@ -162,6 +171,8 @@ class SafeHttpClient:
             if not location:
                 raise FetchError("redirect missing location")
             url = normalize_url(urljoin(url, location))
+            if urlsplit(url).netloc != urlsplit(result.url).netloc:
+                headers = {}
             # Conditional validators belong to the original resource only.
             headers = {k: v for k, v in headers.items() if k.lower() not in
                        {"if-none-match", "if-modified-since"}}
@@ -195,6 +206,10 @@ class SafeHttpClient:
 
     def get(self, url, headers=None, rate_limit_seconds=2, respect_robots=True) -> FetchResult:
         url = normalize_url(url)
+        self.budget.check()
+        key = (url, tuple(sorted((headers or {}).items())), respect_robots)
+        if key in self._cache:
+            return self._cache[key].model_copy(deep=True)
         if respect_robots and not self._allowed(url, rate_limit_seconds):
             raise FetchError("robots policy unavailable or disallows URL", backoff_seconds=3600)
         # Every redirected destination has its own robots policy checked before connecting.
@@ -211,6 +226,9 @@ class SafeHttpClient:
                 raise FetchError("robots policy unavailable or disallows redirect", backoff_seconds=3600)
             result = self._request(url, request_headers, rate_limit_seconds)
             if result.status_code not in (301, 302, 303, 307, 308):
+                # Small run-local public cache avoids fetching a catalog once per benefit.
+                if result.status_code == 200 and len(self._cache) < 8 and not headers:
+                    self._cache[key] = result.model_copy(deep=True)
                 return result
             if not result.headers.get("location"):
                 raise FetchError("redirect missing location")

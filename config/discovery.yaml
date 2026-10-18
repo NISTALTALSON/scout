@@ -1,0 +1,6 @@
+# Public GitHub repository search, not general-purpose web search or code execution.
+enabled: true
+interval_hours: 24
+queries:
+  - 'student developer opportunities archived:false'
+  - 'hackathon India archived:false'

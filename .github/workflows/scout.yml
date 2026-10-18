@@ -1,0 +1,89 @@
+name: Scout opportunity intelligence
+
+on:
+  schedule:
+    # Nine short, bounded runs/day; GitHub may delay or drop scheduled jobs.
+    - cron: "37 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: scan, digest, verify, health, or maintain
+        required: true
+        default: scan
+        type: choice
+        options: [scan, digest, verify, health, maintain]
+      dry_run:
+        description: never send SMTP in this run
+        required: true
+        default: true
+        type: boolean
+      bootstrap_state:
+        description: create missing cloud state (first deployment only)
+        required: true
+        default: false
+        type: boolean
+      category:
+        description: optional category filter for scan
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scout-private-state
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      EMAIL_ENABLED: ${{ secrets.EMAIL_ENABLED }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_SECURITY: ${{ secrets.SMTP_SECURITY }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      TIMEZONE: Asia/Kolkata
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SCOUT_STATE_BRANCH: scout-state
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.28"
+          enable-cache: false
+      - name: Install locked project
+        run: uv sync --frozen
+      - name: Run Scout
+        env:
+          SCOUT_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'scan' }}
+          SCOUT_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          SCOUT_BOOTSTRAP: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap_state || 'false' }}
+          SCOUT_CATEGORY: ${{ github.event_name == 'workflow_dispatch' && inputs.category || '' }}
+        run: |
+          set -euo pipefail
+          args=(--cloud-state --state-dir data)
+          [[ "$SCOUT_BOOTSTRAP" == "true" ]] && args+=(--bootstrap-cloud-state)
+          case "$SCOUT_MODE" in
+            scan)
+              args+=(scan)
+              [[ "$SCOUT_DRY_RUN" == "true" ]] && args+=(--dry-run)
+              [[ -n "$SCOUT_CATEGORY" ]] && args+=(--category "$SCOUT_CATEGORY")
+              ;;
+            digest|verify)
+              args+=("$SCOUT_MODE")
+              [[ "$SCOUT_DRY_RUN" == "true" ]] && args+=(--dry-run)
+              ;;
+            health|maintain) args+=("$SCOUT_MODE") ;;
+            *) echo "Unsupported Scout mode" >&2; exit 2 ;;
+          esac
+          uv run python -m scout.cli "${args[@]}"
+      - name: Publish bounded run summary
+        if: always()
+        run: |
+          echo "Scout completed; scheduled execution is best effort." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,237 @@
+# Research candidates are probation-tested by Scout; a 200 alone is not validation.
+sources:
+  - id: github-blog
+    name: GitHub Blog
+    organization: GitHub
+    url: https://github.blog/feed/
+    type: rss
+    trust: official
+    official_domains: [github.blog]
+    categories: [ai_tools, student_benefits, career]
+    enabled: true
+    validation_status: probation
+    validation_note: RSS retrieved during research on 2026-10-19; Scout live validation pending
+    options: {limit: 12}
+  - id: cloudflare-blog
+    name: Cloudflare Blog
+    organization: Cloudflare
+    url: https://blog.cloudflare.com/rss/
+    type: rss
+    trust: official
+    official_domains: [blog.cloudflare.com, developers.cloudflare.com]
+    categories: [ai_tools, startups, cybersecurity]
+    enabled: true
+    validation_status: probation
+    validation_note: RSS retrieved during research on 2026-10-19; Scout live validation pending
+    options: {limit: 12}
+  - id: openai-news
+    name: OpenAI News
+    organization: OpenAI
+    url: https://openai.com/news/rss.xml
+    type: rss
+    trust: official
+    official_domains: [openai.com]
+    categories: [ai_tools, startups, learning]
+    enabled: true
+    validation_status: probation
+    validation_note: RSS retrieved during research on 2026-10-19; Scout live validation pending
+    options: {limit: 12}
+  - id: huggingface-blog
+    name: Hugging Face publisher and community blog
+    organization: Hugging Face and community authors
+    url: https://huggingface.co/blog/feed.xml
+    type: rss
+    trust: community
+    categories: [ai_tools, learning, career]
+    enabled: true
+    validation_status: probation
+    validation_note: Actual RSS includes third-party authors; never blanket official HF verification
+    options: {limit: 12}
+  - id: anthropic-news
+    name: Anthropic News
+    organization: Anthropic
+    url: https://www.anthropic.com/news
+    type: html
+    trust: official
+    official_domains: [www.anthropic.com, anthropic.com]
+    categories: [ai_tools, startups, cybersecurity]
+    enabled: true
+    validation_status: probation
+    validation_note: Listing retrieved during research; HTML selector live check pending
+    selectors:
+      item: main a[href^='/news/']
+      title: h2, h3, h4
+      discovery: main a[href*='/programs/']
+    options: {limit: 10}
+  - id: github-student-pack
+    name: GitHub Student Developer Pack
+    organization: GitHub Education
+    url: https://education.github.com/pack
+    type: html
+    adapter: student_pack
+    trust: official
+    official_domains: [education.github.com]
+    categories: [student_benefits, ai_tools, learning]
+    enabled: true
+    validation_status: probation
+    validation_note: Benefit catalog retrieved; each partner has separate redemption requirements
+    scan_interval_hours: 24
+    options: {limit: 40}
+  - id: mlh-events
+    name: Major League Hacking 2027 season directory
+    organization: Major League Hacking
+    url: https://mlh.io/seasons/2027/events
+    type: html
+    trust: aggregator
+    categories: [hackathons, career]
+    enabled: true
+    validation_status: probation
+    validation_note: Directory retrieved with organizer links; organizer terms require independent checks
+    scan_interval_hours: 12
+    selectors:
+      item: a[href*='utm_source=mlh']
+      title: h4
+      discovery: a[href*='utm_source=mlh']
+    options: {limit: 20}
+  - id: ctftime-events
+    name: CTFtime upcoming CTF data
+    organization: CTFtime community
+    url: https://ctftime.org/api/v1/events/?limit=20
+    type: api
+    adapter: ctftime
+    trust: aggregator
+    categories: [cybersecurity]
+    enabled: true
+    validation_status: probation
+    validation_note: Documented API for personal data analysis only; no clone or public mirror
+    scan_interval_hours: 12
+    rate_limit_seconds: 5
+    options: {limit: 20, horizon_days: 30}
+  - id: portswigger-academy
+    name: PortSwigger Web Security Academy
+    organization: PortSwigger
+    url: https://portswigger.net/web-security
+    type: html
+    trust: official
+    official_domains: [portswigger.net]
+    categories: [cybersecurity, learning]
+    enabled: true
+    validation_status: probation
+    validation_note: Free training page retrieved; does not imply free certification
+    scan_interval_hours: 168
+    options: {single_page: true, limit: 1}
+  - id: ksum-events
+    name: Kerala Startup Mission events
+    organization: Kerala Startup Mission
+    url: https://startupmission.kerala.gov.in/events
+    type: html
+    trust: official
+    official_domains: [startupmission.kerala.gov.in]
+    categories: [startups, hackathons]
+    enabled: true
+    validation_status: probation
+    validation_note: Page explicitly had no upcoming events during research; no active offer claimed
+    scan_interval_hours: 24
+    selectors: {item: '.upcoming-events .event-card', title: 'h3', link: 'a[href]'}
+    options: {empty_marker: No Upcoming Events, limit: 10}
+  - id: owasp-events
+    name: OWASP events catalog target
+    organization: OWASP
+    url: https://owasp.org/events/
+    type: html
+    trust: official
+    official_domains: [owasp.org]
+    categories: [cybersecurity]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Accessible shell lacked usable event content; collector not established
+  - id: lovable-announcements
+    name: Lovable announcement discovery target
+    organization: Lovable
+    url: https://lovable.dev/blog
+    type: html
+    categories: [ai_tools]
+    enabled: false
+    validation_status: quarantined
+    validation_note: URL/collector not live validated; no promotion assumed
+  - id: vercel-announcements
+    name: Vercel announcement discovery target
+    organization: Vercel
+    url: https://vercel.com/blog
+    type: html
+    categories: [ai_tools, startups]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Collector not live validated
+  - id: supabase-announcements
+    name: Supabase announcement discovery target
+    organization: Supabase
+    url: https://supabase.com/blog
+    type: html
+    categories: [ai_tools, startups]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Collector not live validated
+  - id: aws-startups
+    name: AWS startup programs discovery target
+    organization: AWS
+    url: https://aws.amazon.com/startups/
+    type: html
+    categories: [startups, student_benefits]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Collector and redemption requirements not validated
+  - id: microsoft-students
+    name: Microsoft Azure students discovery target
+    organization: Microsoft
+    url: https://azure.microsoft.com/en-us/free/students/
+    type: html
+    categories: [student_benefits]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Student eligibility and collector not tested
+  - id: google-developers
+    name: Google developer announcements discovery target
+    organization: Google
+    url: https://developers.googleblog.com/
+    type: html
+    categories: [ai_tools, career]
+    enabled: false
+    validation_status: quarantined
+    validation_note: No invented feed endpoint; collector not yet validated
+  - id: gdg-events
+    name: Google developer community discovery target
+    organization: GDG chapters
+    url: https://gdg.community.dev/events/
+    type: html
+    categories: [hackathons]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Dynamic calendar and current organizer terms not validated
+  - id: startup-india
+    name: Startup India discovery target
+    organization: Startup India
+    url: https://www.startupindia.gov.in/
+    type: html
+    categories: [startups]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Site-specific announcement collector not established
+  - id: gsoc-program
+    name: Google Summer of Code discovery target
+    organization: Google
+    url: https://summerofcode.withgoogle.com/
+    type: html
+    categories: [career, learning]
+    enabled: false
+    validation_status: quarantined
+    validation_note: Current-edition application dates and collector not validated
+  - id: tryhackme-news
+    name: TryHackMe discovery target
+    organization: TryHackMe
+    url: https://tryhackme.com/
+    type: html
+    categories: [cybersecurity]
+    enabled: false
+    validation_status: quarantined
+    validation_note: No claim of free certification or full lab access; collector not established

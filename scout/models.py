@@ -73,6 +73,9 @@ class Source(Model):
     etag: str | None = None
     last_modified: str | None = None
     content_hash: str | None = None
+    last_response_status: int | None = None
+    last_parse_outcome: str | None = None
+    last_opportunity_count: int = 0
 
     _url = field_validator("url")(web_url)
 
@@ -184,6 +187,7 @@ class Opportunity(Model):
     notification_history: list[dict[str, Any]] = Field(default_factory=list)
     record_version: int = Field(default=1, ge=1)
     organizer: str | None = None
+    edition_id: str | None = None
     registration_url: str | None = None
     registration_verified: bool = False
     next_action: str = "Read the original announcement and confirm eligibility before applying."
@@ -231,5 +235,6 @@ class RunMetrics(Model):
     emails_sent: int = 0
     ai_calls: int = 0
     ai_tokens: int = 0
+    duration_seconds: float = 0
     stop_reason: str = "completed"
     warnings: list[str] = Field(default_factory=list)

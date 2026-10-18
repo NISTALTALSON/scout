@@ -28,7 +28,7 @@ def _relevant(url):
     relevant = any(word in path for word in ("event", "news", "program", "hackathon",
                                             "challenge", "opportunit", "feed", "rss",
                                             "atom", "calendar", "release"))
-    return relevant and not any(word in parts.hostname.lower() for word in
+    return (relevant or path in {"", "/"}) and not any(word in parts.hostname.lower() for word in
                                 ("track", "analytics", "advert", "doubleclick"))
 
 
@@ -82,6 +82,7 @@ def discover_sources(urls, origin, existing, http, budget, now, auto_enable=True
                     continue
             final_url = normalize_url(response.url)
             owner = next((s for s in existing if s.trust == "official" and
+                          s.validation_status == "validated" and
                           is_official_url(final_url, s.official_domains)), None)
             trusted = owner is not None
             source = Source(id="source-" + hashlib.sha256(final_url.encode()).hexdigest()[:20],

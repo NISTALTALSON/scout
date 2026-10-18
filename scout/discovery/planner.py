@@ -15,7 +15,11 @@ def plan_sources(sources, now, category=None, urgent_only=False, opportunities=N
     """Return due sources, interleaving categories rather than starving small categories."""
     buckets = {}
     for source in sources:
-        if source.validation_status in {"rejected", "quarantined", "suspended"}:
+        if source.validation_status in {"rejected", "quarantined"}:
+            continue
+        if source.validation_status == "suspended" and (
+            not source.suspended_until or now < source.suspended_until
+        ):
             continue
         if not source.enabled and source.validation_status != "probation":
             continue
@@ -25,19 +29,22 @@ def plan_sources(sources, now, category=None, urgent_only=False, opportunities=N
             continue
         if source.suspended_until and now < source.suspended_until:
             continue
+        urgent = _urgent(source, opportunities, now)
         interval = min(source.max_interval_hours,
-                       max(source.min_interval_hours,
-                           source.scan_interval_hours * (2 ** min(source.failure_count, 8))))
+                        max(source.min_interval_hours,
+                            (source.min_interval_hours if urgent else source.scan_interval_hours)
+                            * (2 ** min(source.failure_count, 8))))
         if source.last_attempt_at and now < source.last_attempt_at + timedelta(hours=interval):
             continue
         key = category or min(source.categories)
         lag = (now - source.last_attempt_at).total_seconds() if source.last_attempt_at else float("inf")
-        buckets.setdefault(key, []).append((-lag, source.id, source))
+        priority = lag * (0.8 + 0.4 * source.usefulness) + (3600 if urgent else 0)
+        buckets.setdefault(key, []).append((-priority, source.id, source))
     for queue in buckets.values():
         queue.sort(key=lambda row: (row[0], row[1]))
     output = []
     while any(buckets.values()):
-        for key in sorted(buckets):
+        for key in sorted(buckets, key=lambda key: buckets[key][0][:2] if buckets[key] else (0, "")):
             if buckets[key]:
                 output.append(buckets[key].pop(0)[2])
     return output

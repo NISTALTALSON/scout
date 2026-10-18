@@ -1,0 +1,10 @@
+.git
+.venv
+.uv-cache
+.python-runtimes
+.python-bin
+data
+private
+*.sqlite*
+tests
+.omnirush

@@ -35,9 +35,11 @@ def find_duplicate(item: Opportunity, existing: list[Opportunity]) -> Opportunit
     """Never conflate explicitly different event editions or unknown organizers by title."""
     url = _identity_url(item.canonical_url)
     for old in existing:
-        if _edition(item) and _edition(old) and _edition(item) != _edition(old):
+        if item.edition_id and old.edition_id and item.edition_id != old.edition_id:
             continue
-        if (item.start_at and old.start_at and item.start_at.date() != old.start_at.date()):
+        if item.opportunity_type == old.opportunity_type == "student_benefit" and _title(item.title) != _title(old.title):
+            continue
+        if _edition(item) and _edition(old) and _edition(item) != _edition(old):
             continue
         if (_date(item) and _date(old) and _date(item).year != _date(old).year):
             continue

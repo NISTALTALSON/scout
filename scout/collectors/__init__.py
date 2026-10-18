@@ -2,9 +2,9 @@
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import feedparser
 from bs4 import BeautifulSoup
@@ -85,6 +85,36 @@ def _html(source, response, now):
     soup = BeautifulSoup(response.content, "html.parser")
     candidates, discovered = [], []
     selectors = source.selectors
+    if source.options.get("single_page"):
+        heading = soup.find("h1") or soup.find("title")
+        body = soup.find("main") or soup.find("article") or soup
+        for tag in body.find_all(["script", "style", "nav", "footer", "noscript"]):
+            tag.decompose()
+        item = _candidate(source, heading.get_text(" ", strip=True) if heading else source.name,
+                          response.url, body.get_text(" ", strip=True), now)
+        if item:
+            candidates.append(item)
+    if source.adapter == "student_pack":
+        # Benefit headings are the actual publisher's structure, not invented redemption URLs.
+        headings = soup.find_all("h3")
+        for heading in headings:
+            parts = []
+            for next_node in heading.next_elements:
+                if getattr(next_node, "name", None) == "h3":
+                    break
+                if isinstance(next_node, str) and next_node.strip():
+                    parts.append(next_node.strip())
+            text = " ".join(parts)[:4000]
+            if "Offer" not in text or "About" not in text:
+                continue
+            name = heading.get_text(" ", strip=True)
+            item = _candidate(source, f"{name} — student benefit", response.url,
+                              f"Student Developer Pack offer. {text}", now,
+                              {"benefit_name": name, "student_pack": True})
+            if item:
+                candidates.append(item)
+            if len(candidates) >= _limit(source):
+                break
     # Only explicitly configured selectors produce ordinary page candidates.
     if selectors.get("item"):
         for node in soup.select(selectors["item"])[:_limit(source)]:
@@ -92,7 +122,9 @@ def _html(source, response, now):
             link_node = node.select_one(selectors.get("link", "a[href]"))
             text_node = node.select_one(selectors["text"]) if selectors.get("text") else node
             date_node = node.select_one(selectors["date"]) if selectors.get("date") else None
-            title = title_node.get_text(" ", strip=True) if title_node else None
+            title = title_node.get_text(" ", strip=True) if title_node else (
+                node.get_text(" ", strip=True) if node.name == "a" else None)
+            link_node = node if node.name == "a" and node.get("href") else link_node
             url = _url(response.url, link_node.get("href")) if link_node else None
             metadata = {"date_excerpt": date_node.get_text(" ", strip=True)[:500]} if date_node else {}
             for key in ("start_at", "deadline_at", "price", "eligibility", "organizer"):
@@ -181,7 +213,11 @@ def _records(source, response, now):
             url = _url(response.url, row.get("url") or row.get("ctftime_url"))
             metadata = {key: row[key] for key in ("start", "finish", "onsite", "format",
                         "organizers", "restrictions") if key in row}
-            item = _candidate(source, row.get("title"), url, row.get("description", ""), now, metadata)
+            metadata.update({"start_at": row.get("start"), "end_at": row.get("finish"),
+                             "external_id": str(row.get("id", ""))})
+            item = _candidate(source, row.get("title"), url,
+                              "Capture the flag competition. " + str(row.get("description", "")),
+                              now, metadata)
             if item:
                 results.append(item)
         return results, []
@@ -217,6 +253,8 @@ def _calendar(source, response, now):
         start = event.get("dtstart")
         end = event.get("dtend")
         metadata = {}
+        if event.get("uid"):
+            metadata["external_id"] = str(event.get("uid"))
         if start:
             metadata["start_at"] = str(start.dt)
         if end:
@@ -250,8 +288,12 @@ def parse(source, response, now) -> CollectionResult:
             candidates, links = _calendar(source, response, now)
     except (ValueError, TypeError, KeyError, AttributeError, SelectorSyntaxError) as exc:
         return CollectionResult(metadata=metadata, parse_outcome=f"parse_error:{type(exc).__name__}")
+    outcome = "ok" if candidates else "empty"
+    marker = source.options.get("empty_marker")
+    if not candidates and isinstance(marker, str) and marker in response.text:
+        outcome = "empty_expected"
     return CollectionResult(candidates=candidates[:_limit(source)], discovered_urls=links[:20],
-                            metadata=metadata, parse_outcome="ok" if candidates else "empty")
+                            metadata=metadata, parse_outcome=outcome)
 
 
 def collect(source, http, now) -> CollectionResult:
@@ -260,7 +302,15 @@ def collect(source, http, now) -> CollectionResult:
         headers["If-None-Match"] = source.etag
     if source.last_modified:
         headers["If-Modified-Since"] = source.last_modified
-    response = http.get(source.url, headers=headers, rate_limit_seconds=source.rate_limit_seconds)
+    url = source.url
+    if source.adapter == "ctftime":
+        parts = urlsplit(url)
+        query = dict(parse_qsl(parts.query))
+        horizon = min(90, max(1, int(source.options.get("horizon_days", 30))))
+        query.update(start=str(int(now.timestamp())),
+                     finish=str(int((now + timedelta(days=horizon)).timestamp())))
+        url = urlunsplit(parts._replace(query=urlencode(query)))
+    response = http.get(url, headers=headers, rate_limit_seconds=source.rate_limit_seconds)
     result = parse(source, response, now)
     if result.not_modified:
         result.metadata["etag"] = result.metadata.get("etag") or source.etag

@@ -2,14 +2,14 @@
 
 import hashlib
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from scout.models import Candidate, ClaimEvidence, Opportunity, Source, web_url
 from scout.urls import normalize_url
 
 _DATE = r"(?:20\d{2}-\d{2}-\d{2}|\d{1,2}\s+[A-Za-z]+\s+20\d{2}|[A-Za-z]+\s+\d{1,2},?\s+20\d{2})"
-_TIME = r"(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\s*[ap]m)?|(?:1[0-2]|[1-9])\s*[ap]m"
+_TIME = r"(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\s*[ap]m\b)?|(?:1[0-2]|[1-9])\s*[ap]m\b"
 _ZONE = r"(?:Z|UTC|GMT|IST|[+-](?:0\d|1[0-4]):?[0-5]\d|[A-Za-z_]+/[A-Za-z_]+)"
 _STAMP = re.compile(rf"(?P<date>{_DATE})\s*(?:at|,|T|\s)\s*(?P<time>{_TIME})\s*(?P<zone>{_ZONE})\b", re.I)
 _ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$", re.I)
@@ -25,7 +25,7 @@ _TYPED = re.compile(
 _ACTION = re.compile(
     r"\b(apply|applications?\s+open|register|registration|sign\s*up|enroll|join\s+(?:the|our)|"
     r"redeem|claim|submit|hackathon|scholarship|internship|fellowship|free\s+(?:tier|course|training|"
-    r"certification)|trial|discount|offer|competition|challenge|credits?|workshop|webinar)\b", re.I,
+    r"certification)|ctf|capture\s+the\s+flag|grant|accelerator|trial|discount|offer|competition|challenge|credits?|workshop|webinar)\b", re.I,
 )
 
 
@@ -56,8 +56,6 @@ def _date_value(value: object) -> datetime | None:
 
         zone = match["zone"].upper()
         if zone in {"IST", "UTC", "GMT"}:
-            from datetime import timedelta, timezone
-
             tz = timezone(timedelta(hours=5, minutes=30)) if zone == "IST" else UTC
         elif "/" in match["zone"]:
             tz = ZoneInfo(match["zone"])
@@ -73,8 +71,16 @@ def _date_value(value: object) -> datetime | None:
             f"{match['date']} {match['time']}",
             settings={"DATE_ORDER": "DMY", "STRICT_PARSING": True, "RETURN_AS_TIMEZONE_AWARE": False},
         )
-        return parsed.replace(tzinfo=tz).astimezone(UTC) if parsed else None
-    except (ValueError, TypeError, OverflowError):
+        if not parsed:
+            return None
+        aware = parsed.replace(tzinfo=tz)
+        # Reject ambiguous folds and nonexistent local clock times, rather than inventing DST.
+        if aware.replace(fold=0).utcoffset() != aware.replace(fold=1).utcoffset():
+            return None
+        if aware.astimezone(UTC).astimezone(tz).replace(tzinfo=None) != parsed:
+            return None
+        return aware.astimezone(UTC)
+    except (ValueError, TypeError, OverflowError, KeyError):
         return None
 
 
@@ -196,8 +202,9 @@ def _eligibility(item: Opportunity, text: str, metadata: dict, now: datetime) ->
         item.eligibility = _excerpt(joined, exclusion, raw)
     elif (local or raw.strip().lower() in {"india", "indian students", "worldwide"}) and not unclear_exclusion:
         item.india_eligible = True
-        item.student_verification_required = bool(re.search(r"\b(?:verified\s+student|student\s+verification|"
-                                                          r"student\s+email\s+required)\b", joined, re.I))
+        item.student_verification_required = True if re.search(
+            r"\b(?:verified\s+student|student\s+verification\s+required|student\s+email\s+required)\b",
+            joined, re.I) else None
         item.eligibility_status = "conditional" if item.student_verification_required else "eligible"
         item.eligibility = _excerpt(joined, local, raw)
     if item.eligibility_status != "unknown":
@@ -217,8 +224,15 @@ def extract(candidate: Candidate, source: Source, now: datetime, taxonomy: dict[
     if not category or not strength:
         return None
     canonical = normalize_url(candidate.url)
+    edition = re.search(r"\b20\d{2}\b", candidate.title)
+    identity = canonical + ("|" + edition.group() if edition else "")
+    if source.adapter == "student_pack":
+        identity += "|" + str(candidate.metadata.get("benefit_name", candidate.title)).casefold()
+    external = str(candidate.metadata.get("external_id", ""))
+    if external:
+        identity += "|" + external
     item = Opportunity(
-        id=hashlib.sha256(canonical.encode()).hexdigest()[:24], title=candidate.title.strip(),
+        id=hashlib.sha256(identity.encode()).hexdigest()[:24], title=candidate.title.strip(),
         summary=text[:2000], canonical_url=canonical, source_url=source.url, source_name=source.name,
         source_type=source.type, source_id=source.id, category=category,
         discovery_method=candidate.discovery_method, published_at=candidate.published_at,
@@ -226,12 +240,17 @@ def extract(candidate: Candidate, source: Source, now: datetime, taxonomy: dict[
         evidence_urls=[canonical], organizer=str(candidate.metadata["organizer"])[:200]
         if candidate.metadata.get("organizer") else None,
     )
-    _claim(item, "title", item.title, item.title, now)
+    if external:
+        item.edition_id = external
+    if source.adapter == "student_pack":
+        item.opportunity_type = "student_benefit"
+        item.category = "student_benefits"
+    _claim(item, "title", item.title, str(candidate.metadata.get("benefit_name", item.title)), now)
     if item.organizer:
         _claim(item, "organizer", item.organizer, str(candidate.metadata["organizer"]), now)
     _dates(item, candidate, now)
-    _pricing(item, subject, candidate.metadata, now)
-    _eligibility(item, subject, candidate.metadata, now)
+    _pricing(item, text or candidate.title, candidate.metadata, now)
+    _eligibility(item, text or candidate.title, candidate.metadata, now)
     registration = candidate.metadata.get("registration_url")
     if isinstance(registration, str):
         try:

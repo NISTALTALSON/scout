@@ -8,7 +8,8 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from scout.budgets import BudgetExceeded
-from scout.models import ClaimEvidence, Opportunity, Source
+from scout.intelligence.extraction import _dates, _eligibility, _pricing
+from scout.models import Candidate, ClaimEvidence, Opportunity, Source
 from scout.urls import is_official_url, normalize_url
 
 
@@ -63,7 +64,55 @@ def verify(opportunity: Opportunity, source: Source, now: datetime, http=None) -
                     tag.decompose()
                 anchors = [(urljoin(result.url, a.get("href", "")), a.get_text(" ", strip=True))
                            for a in soup.find_all("a", href=True)[:500]]
-                page = soup.get_text(" ", strip=True)[:200_000]
+                body = soup.find("article") or soup.find("main") or soup
+                for tag in body.find_all(["nav", "footer", "header"]):
+                    tag.decompose()
+                page = body.get_text(" ", strip=True)[:200_000]
+                # Refresh actual facts from the original page, not just the feed snippet.
+                # Only do this when the existing title is present: a redirected home page
+                # must not replace an opportunity with unrelated generic promotional copy.
+                if _normalized(item.title) in _normalized(page) and item.opportunity_type != "student_benefit":
+                    fresh = item.model_copy(deep=True)
+                    fresh.claim_evidence = [e for e in fresh.claim_evidence if e.claim in {"title", "organizer"}]
+                    fresh.deadline_at = fresh.start_at = fresh.end_at = None
+                    fresh.deadline_type = "unknown"
+                    fresh.date_notes = []
+                    fresh.price_status, fresh.eligibility_status = "unknown", "unknown"
+                    fresh.india_eligible = fresh.student_verification_required = None
+                    fresh.eligibility = "Eligibility for Indian students could not be confirmed."
+                    candidate = Candidate(source_id=source.id, title=item.title,
+                                          url=item.canonical_url, text=page[:40000], collected_at=now)
+                    _dates(fresh, candidate, now)
+                    _pricing(fresh, candidate.text, {}, now)
+                    _eligibility(fresh, candidate.text, {}, now)
+                    # A structured feed may carry an explicit field absent from rendered
+                    # text; keep it as an unverified claim rather than invent a replacement.
+                    if fresh.deadline_at is None and item.deadline_at is not None:
+                        fresh.deadline_at, fresh.deadline_type = item.deadline_at, item.deadline_type
+                        fresh.claim_evidence.extend(e for e in item.claim_evidence if e.claim == "deadline_at")
+                    fresh.availability_status = "unknown"
+                    if re.search(r"\b(?:offer\s+withdrawn|event\s+cancelled|event\s+canceled)\b", page, re.I):
+                        fresh.availability_status = "withdrawn"
+                    elif re.search(r"\b(?:fully\s+booked|sold\s+out)\b", page, re.I):
+                        fresh.availability_status = "full"
+                    elif re.search(r"\b(?:registration\s+closed|applications?\s+closed|offer\s+ended)\b", page, re.I):
+                        fresh.availability_status = "closed"
+                    elif re.search(r"\b(?:register\s+now|registration\s+open|apply\s+now|applications?\s+open)\b", page, re.I):
+                        fresh.availability_status = "open"
+                    if item.registration_url:
+                        fresh.registration_url = item.registration_url
+                        fresh.claim_evidence.extend(e for e in item.claim_evidence if e.claim == "registration_url")
+                    item = fresh
+                if official and item.registration_url is None:
+                    for link, label in anchors:
+                        if is_official_url(link, source.official_domains) and re.search(
+                            r"\b(?:register|apply|enroll|sign\s*up)\b", label, re.I
+                        ):
+                            item.registration_url = normalize_url(link)
+                            item.claim_evidence.append(ClaimEvidence(
+                                claim="registration_url", value=item.registration_url,
+                                url=item.canonical_url, excerpt=label[:1000], checked_at=now))
+                            break
             # 304 cannot verify content without a persisted prior page.
         except BudgetExceeded:
             raise
@@ -87,6 +136,10 @@ def verify(opportunity: Opportunity, source: Source, now: datetime, http=None) -
         claim.reliable = reliable
         claim.checked_at = now
     item.verification_checked_at = now
+    if item.price_status == "verified_free" and not (
+        official and "price_status" in supported
+    ):
+        item.price_status = "unknown"
     item.deadline_verified = (item.deadline_at is not None and item.deadline_type not in
                               {"unknown", "event_start"} and "deadline_at" in supported and official)
     item.registration_verified = False

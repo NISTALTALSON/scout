@@ -16,6 +16,7 @@ build/
 .env.*
 !.env.example
 data/
+data-live/
 private/
 *.sqlite*
 *.eml
