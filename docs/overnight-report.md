@@ -28,6 +28,9 @@ therefore remain owner actions.
 - `b16ade6` — public-source/private-state separation, offline demo, 110-test functional
   coverage, Docker test contents, source-health documentation and buildathon package.
 - `13b0f8a` — schedule, weekly-maintenance and Docker-check documentation correction.
+- `c9706c5` — initial overnight report and quality-gate record.
+- `68b6c39` — digest-pinned Docker base, reproducibility workflow, current publication
+  checklist and refreshed release evidence.
 - Cloud mode now requires `SCOUT_STATE_REPOSITORY`, `SCOUT_STATE_TOKEN` and
   `SCOUT_STATE_BRANCH`; it never falls back to the public workflow repository/token.
 - Runtime rejects a state repository equal to `GITHUB_REPOSITORY`; the workflow has

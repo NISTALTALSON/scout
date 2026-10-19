@@ -46,7 +46,7 @@ the owner verifies those facts and asks the organizer about any uncertainty.
 - **03:28 IST:** final offline gates and secret/path scans were rerun; the complete
   morning handoff is in `docs/overnight-report.md`. External publication, Docker,
   GitHub Actions, SMTP and dashboard verification remain blocked by missing access.
-- **10:37 IST:** rechecked the actual Git state: local `main` at `c9706c5`, no remote,
+- **10:37 IST:** rechecked the actual Git state: local `main` at `68b6c39`, no remote,
   no other branch, no `gh`/Docker/Make executables, and no configured state/SMTP
   environment. Audited reachable history/archive and unreachable source-only objects;
   added a digest-pinned Docker base and a read-only reproducibility workflow. Public
