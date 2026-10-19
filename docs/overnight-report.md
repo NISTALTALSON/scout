@@ -31,6 +31,7 @@ therefore remain owner actions.
 - `c9706c5` — initial overnight report and quality-gate record.
 - `68b6c39` — digest-pinned Docker base, reproducibility workflow, current publication
   checklist and refreshed release evidence.
+- `68412c6` — final release checkpoint record before this documentation update.
 - Cloud mode now requires `SCOUT_STATE_REPOSITORY`, `SCOUT_STATE_TOKEN` and
   `SCOUT_STATE_BRANCH`; it never falls back to the public workflow repository/token.
 - Runtime rejects a state repository equal to `GITHUB_REPOSITORY`; the workflow has
@@ -44,7 +45,7 @@ therefore remain owner actions.
   attempts, 21 new opportunities, and `duration_budget` stop. The failure was
   PortSwigger robots retrieval; the run returned partial coverage rather than claiming
   a complete cycle.
-- Current Git audit: `HEAD` is `c9706c5` on local `main`; there is no configured
+- Current Git audit: the audited release state is `68412c6` on local `main`; there is no configured
   remote and no other local branch. Reachable history contains no database, export,
   checkpoint branch or credential file. The `git archive` publication set contains
   113 entries and no sensitive state artifacts. Five unreachable Git objects are
