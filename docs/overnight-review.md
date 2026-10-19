@@ -1,6 +1,6 @@
 # Scout overnight engineering review
 
-Last updated: **2026-10-19 03:28 Asia/Kolkata**
+Last updated: **2026-10-19 10:37 Asia/Kolkata**
 
 This is an active engineering record. Claims below are based on the workspace,
 local commands, the current OmniRush session, and bounded synthetic/live checks;
@@ -46,3 +46,8 @@ the owner verifies those facts and asks the organizer about any uncertainty.
 - **03:28 IST:** final offline gates and secret/path scans were rerun; the complete
   morning handoff is in `docs/overnight-report.md`. External publication, Docker,
   GitHub Actions, SMTP and dashboard verification remain blocked by missing access.
+- **10:37 IST:** rechecked the actual Git state: local `main` at `c9706c5`, no remote,
+  no other branch, no `gh`/Docker/Make executables, and no configured state/SMTP
+  environment. Audited reachable history/archive and unreachable source-only objects;
+  added a digest-pinned Docker base and a read-only reproducibility workflow. Public
+  publication and buildathon account verification remain owner actions.

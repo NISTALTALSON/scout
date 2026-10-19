@@ -50,6 +50,9 @@ Research date: **2026-10-19 Asia/Kolkata**. Research and architecture evidence:
   health capability through explicit `maintain`. The default schedule is eight
   scan cycles/day at minute 37 of every third hour; the 09:07 IST cycle also queues
   the daily digest. Schedules are best-effort: GitHub can delay/drop them.
+* A separate read-only reproducibility workflow builds the digest-pinned Docker image
+  and runs the complete test suite plus offline demo with `--network none`. It is
+  prepared locally but cannot be remotely verified until a public repository exists.
 
 ## Project layout
 

@@ -21,6 +21,15 @@ the action.
 - **Buildathon submission ID:** Not available.
 - **Unstop submission status:** Not verified.
 
+### Verified OmniRush session
+
+- **Workspace:** `Automation` (`ws_56da7924b8eb`)
+- **Session:** `Building Scout: Autonomous Opportunity Agent`
+  (`ses_eaf72d393ffeRLvybkw5zMn2PX`)
+- **Session evidence:** This current session contains the Scout implementation,
+  commits and release work. Dashboard selection/attachment of the session to a
+  submission is not verified while OmniRush auth is signed out.
+
 ## What the repository demonstrates
 
 The public release should contain application code, tests, synthetic demo fixtures,
@@ -66,12 +75,12 @@ destination.
 | Join before 19 Oct 2026 23:59 IST | **NOT VERIFIED** | OmniRush auth is signed out. Owner must sign in to the dashboard and confirm Join. |
 | Connected GitHub account is participant's account | **NOT VERIFIED** | Confirm in the dashboard; do not submit a repository from another account. |
 | Connected GitHub account is at least three days old | **NOT VERIFIED** | Confirm from the connected account. |
-| OmniRush is the only generative AI tool used | **UNCERTAIN** | The current project work is represented in this OmniRush session, but outside-tool use cannot be proven from the repository. Ask the organizer if uncertain. |
+| OmniRush is the only generative AI tool used | **UNCERTAIN / DISCLOSE** | The current project work is represented in this OmniRush session, but any external project-planning, architecture, code, text or image assistance cannot be inferred away. If any other generative AI contributed project-specific material, disclose it to the organizer and do not claim sole-tool compliance without clarification. |
 | Solo entry | **OWNER CONFIRMATION** | Confirm no teammate is submitting the same project. |
 | Public GitHub source repository | **BLOCKED** | Create/publish only after the state-separation and secret gates pass. |
 | README and setup/test instructions | **PASS locally** | `README.md`, `.env.example`, `uv.lock`, `.python-version`, Dockerfile and `scripts/test.py` are present. |
 | Open-source license | **DRAFT PRESENT** | `LICENSE` is MIT; owner should confirm the copyright-holder wording before public push. |
-| Docker rebuild | **BLOCKED locally** | Docker is unavailable on this host; run the documented build/test commands on a clean Linux/Docker host. |
+| Docker rebuild | **BLOCKED locally** | Docker is unavailable on this host; `.github/workflows/reproducibility.yml` is prepared to build the pinned image and run the offline test/demo after the public push. |
 | Offline tests | **PASS locally** | `python scripts/test.py` — 110 passed after the current sprint's edits. |
 | Demo video | **NOT DONE** | Record a 2–3 minute screen capture using the walkthrough below. |
 | Live demo | **OPTIONAL / NOT PROVIDED** | CLI projects do not require a hosted web demo. |
@@ -109,3 +118,30 @@ destination.
    sender configuration; record the actual workflow and receipt evidence.
 6. Record the demo, submit the dashboard entry before **20 Oct 2026 23:59 IST**, copy
    the actual Submission ID to Unstop, and verify the final status.
+
+## Manual public publication steps
+
+No remote or GitHub CLI is available in the current workspace, so no push was
+attempted. After signing in to the connected GitHub account, use an empty **public**
+repository and keep the private state repository separate:
+
+```bash
+# Run from the clean Scout checkout after reviewing the connected account/repo name.
+git status --short
+git remote add origin https://github.com/<CONNECTED_ACCOUNT>/<PUBLIC_REPO>.git
+git push -u origin main
+git ls-remote origin refs/heads/main
+```
+
+Do not create the public repository with an extra README, license or `.gitignore`; the
+local release already contains those files. Before pushing, confirm the destination
+has no prior `scout-state` branch or private checkpoint history. After the push,
+verify the public repository URL, default branch, latest SHA and workflow files in the
+browser. Then create/configure a different private state repository and add only the
+`SCOUT_STATE_*` and email secrets to the public repository's Actions settings. Do not
+put a state token in the source tree or paste it into chat.
+
+If using GitHub CLI on a machine where it is installed, authenticate with `gh auth
+login`, create the public repository with the connected account, add the returned
+remote and push; verify with `gh repo view` and the GitHub Actions run page. The
+current workspace cannot run those commands because `gh` is not installed.

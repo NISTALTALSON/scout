@@ -1,0 +1,21 @@
+name: Reproducible Docker checks
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Build pinned image
+        run: docker build --pull=false -t scout-ci .
+      - name: Run offline test suite
+        run: docker run --rm --network none scout-ci /opt/scout/.venv/bin/python scripts/test.py
+      - name: Run offline demo
+        run: docker run --rm --network none scout-ci /opt/scout/.venv/bin/python scripts/demo.py

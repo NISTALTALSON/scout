@@ -1,6 +1,6 @@
 # Scout overnight engineering report
 
-Report timestamp: **2026-10-19 03:28 Asia/Kolkata**
+Report timestamp: **2026-10-19 10:37 Asia/Kolkata**
 
 This report records work actually performed in the current workspace. It does not
 claim a GitHub push, Docker build, cloud checkpoint, SMTP receipt or buildathon
@@ -41,6 +41,12 @@ therefore remain owner actions.
   attempts, 21 new opportunities, and `duration_budget` stop. The failure was
   PortSwigger robots retrieval; the run returned partial coverage rather than claiming
   a complete cycle.
+- Current Git audit: `HEAD` is `c9706c5` on local `main`; there is no configured
+  remote and no other local branch. Reachable history contains no database, export,
+  checkpoint branch or credential file. The `git archive` publication set contains
+  113 entries and no sensitive state artifacts. Five unreachable Git objects are
+  source-only remnants from interrupted edits; they are not reachable from any
+  branch and contain no credential/email/state payload.
 
 ## 3. Bugs and issues found
 
@@ -62,8 +68,10 @@ therefore remain owner actions.
   GitHub remote or authorization is configured locally.
 - The workspace contains the current Scout OmniRush session and its transcript, but a
   repository cannot prove whether other generative AI tools were used outside this
-  workspace. The owner must resolve that eligibility question with the organizer if
-  applicable.
+  workspace. In particular, any external project-planning or architecture assistance
+  used to shape the submitted project may matter under the rule that OmniRush must be
+  the sole generative-AI tool. The owner must disclose the facts to the organizer and
+  resolve eligibility; do not rewrite history or imply sole-tool compliance.
 - GitHub Contents API checkpointing is covered by mocked tests only. A separate
   private state repository and narrowly scoped token are not provisioned.
 - SMTP templates, TLS setup, retry classification and outbox behavior are tested with
@@ -72,8 +80,10 @@ therefore remain owner actions.
 - GitHub schedules can be delayed or dropped; one-hour alerts are best effort, not an
   SLA. Four enabled sources were not reached in the measured smoke run.
 - Docker rebuild and `make` targets were not executed because those executables are
-  unavailable on this host. The Makefile now delegates to `uv run`; its underlying
-  commands were executed directly.
+  unavailable on this host. The Docker base image is now digest-pinned and
+  `.github/workflows/reproducibility.yml` is prepared, but the remote workflow cannot
+  run until a public repository exists. The Makefile now delegates to `uv run`; its
+  underlying commands were executed directly.
 
 ## 5. Source health
 
@@ -95,7 +105,7 @@ therefore remain owner actions.
 
 ## 6. Security and publication
 
-- Secret/path scan: **PASS**. All 95 tracked files were scanned for private keys,
+- Secret/path scan: **PASS**. All 96 tracked files were scanned for private keys,
   GitHub token prefixes, AWS key prefixes, user-specific absolute paths and literal
   email addresses. The only email matches are known example addresses in test
   fixtures; no credential pattern or personal state file was found.
@@ -123,14 +133,14 @@ therefore remain owner actions.
 | Ruff | PASS | `uv run --offline ruff check scout tests scripts` |
 | Configuration | PASS | `uv run --offline python -c ...` — 21 source records |
 | Workflow YAML/policy | PASS | PyYAML parse; read-only contents; independent state env names verified |
-| Secret and absolute-path scan | PASS | 95 tracked files; no credential/path findings |
+| Secret and absolute-path scan | PASS | 96 tracked files; no credential/path findings |
 | State export/import and checkpoint CAS | PASS | Existing storage/checkpoint tests included in the 110-test suite |
 | End-to-end lifecycle | PASS | Restart, deduplication, material update, deadline and outbox tests |
 | Deadline 24/6/1-hour policies | PASS | Boundary tests plus offline demo output |
 | Retryable/permanent email failure | PASS | Functional coverage and existing notification tests |
 | Source outage/budget isolation | PASS | Broken, rate-limited, malformed and HTTP-budget fixtures |
 | Offline demo | PASS | Synthetic fixtures, temporary state, zero SMTP calls |
-| Docker build and `--network none` test | BLOCKED | Docker executable unavailable on this host; static Dockerfile/context gate passed |
+| Docker build and `--network none` test | BLOCKED | Docker executable unavailable on this host; pinned Dockerfile/context and reproducibility workflow are prepared |
 | `make test` / `make check` | BLOCKED | GNU Make unavailable; underlying uv commands passed directly |
 | Real SMTP receipt | NOT RUN | No credentials and no explicit owner action |
 | GitHub checkpoint/Actions schedule | NOT RUN | No repository/token; mocks and static workflow checks only |
@@ -145,6 +155,7 @@ therefore remain owner actions.
 | Bounded live source collection | PARTIAL and verified once; 5/10 planned sources completed before budget stop |
 | GitHub checkpoint persistence | Mock-tested only; private state destination not provisioned |
 | Scheduled GitHub Actions | Workflow reviewed/YAML-validated only; not run remotely |
+| Docker reproducibility workflow | Prepared/YAML-validated only; not run remotely |
 | Real SMTP delivery | Mock-tested only; no provider receipt |
 | End-to-end unattended operation | NOT VERIFIED; requires public source repo, private state repo, secrets, Actions run and SMTP receipt |
 
